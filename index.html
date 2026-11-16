@@ -6,9 +6,9 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#FCF9F0">
 <title>오늘의 푸드트럭 · 샘마을대우한양아파트</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://googleapis.com">
+<link rel="preconnect" href="https://gstatic.com" crossorigin>
+<link href="https://googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#FCF9F0; --panel:#FFFDF6; --line:#D9CFB2;
@@ -86,19 +86,19 @@ h1 svg{width:38px;height:38px;flex:none;color:var(--lit)}
 
 <script>
 /* ===== 여기만 고치세요 ===== */
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKNt-Nacw9SwbqurM7ktSvNIXinJxvpZGYKef73KTRc8N4vRDcFYFzqOSJscOtmmCTL64wuOlNHoyz/pub?output=csv";   // 구글 시트 "웹에 게시" CSV 주소
-const FORM_URL      = "https://forms.gle/Qyk4Cv5MzTWH73id7";   // 구글 폼 주소 (비우면 버튼이 숨겨져요)
+const SHEET_CSV_URL = "";   // 구글 시트 "웹에 게시" CSV 주소
+const FORM_URL      = "";   // 구글 폼 주소 (비우면 버튼이 숨겨져요)
 /* ========================== */
 
 const DEMO = [
-  {date:todayKey(0),name:"청춘 닭꼬치",menu:"닭꼬치 3,000원\n소떡소떡 2,500원",time:"17:00–21:00",loc:"111동 앞",phone:"01000000000"},
-  {date:todayKey(0),loc:"107동 옆",name:"달콤 붕어빵",menu:"팥 붕어빵 3개 2,000원\n슈크림 붕어빵 3개 2,000원",time:"16:30–20:00"},
-  {date:todayKey(0),name:"옥수수 아저씨",menu:"찰옥수수 1개 3,000원",time:"21:00–22:00"},
-  {date:todayKey(1),name:"타코 트럭",menu:"타코 2개 6,000원\n부리토 7,000원",time:"17:00–21:00"}
+  {date:todayKey(0),days:[],name:"청춘 닭꼬치",menu:"닭꼬치 3,000원\n소떡소떡 2,500원",time:"17:00–21:00",loc:"111동 앞",phone:"01000000000"},
+  {date:"",days:[0,1,2,3,4,5,6],loc:"107동 옆",name:"달콤 붕어빵 (매주 방문 예시)",menu:"팥 붕어빵 3개 2,000원\n슈크림 붕어빵 3개 2,000원",time:"16:30–20:00"},
+  {date:todayKey(1),days:[],name:"타코 트럭",menu:"타코 2개 6,000원\n부리토 7,000원",time:"17:00–21:00"}
 ];
 
 let rows = [], offset = 0, failed = false;
 const $ = id => document.getElementById(id);
+const WDAYS = ["일","월","화","수","목","금","토"];
 
 function pad(n){return String(n).padStart(2,"0")}
 function keyOf(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
@@ -130,25 +130,44 @@ function normDate(s){
   return "";
 }
 
+function parseDays(s){
+  s=(s||"").trim();
+  if(/\d{4}/.test(s)||/\d{1,2}\/\d{1,2}/.test(s)) return [];
+  const found=[];
+  WDAYS.forEach((w,idx)=>{ if(s.includes(w)) found.push(idx); });
+  return found;
+}
+
 function toRows(table){
   const head=table[0].map(h=>h.trim());
   const col=k=>head.findIndex(h=>h.includes(k));
   const ix={date:col("날짜"),photo:col("사진"),name:col("트럭"),menu:col("메뉴"),time:col("시간"),loc:col("위치"),phone:col("전화")};
-  return table.slice(1).map(r=>({
-    date:normDate(r[ix.date]),
-    photo:ix.photo<0?"":(r[ix.photo]||"").trim(),
-    name:(r[ix.name]||"").trim(),
-    menu:(r[ix.menu]||"").trim(),
-    time:(r[ix.time]||"").trim(),
-    loc:ix.loc<0?"":(r[ix.loc]||"").trim(),
-    phone:ix.phone<0?"":(r[ix.phone]||"").replace(/[^\d+]/g,"")
-  })).filter(r=>r.date&&r.name);
+  return table.slice(1).map(r=>{
+    const rawDate = (r[ix.date]||"").trim();
+    return {
+      date:normDate(rawDate),
+      days:parseDays(rawDate),
+      photo:ix.photo<0?"":(r[ix.photo]||"").trim(),
+      name:(r[ix.name]||"").trim(),
+      menu:(r[ix.menu]||"").trim(),
+      time:(r[ix.time]||"").trim(),
+      loc:ix.loc<0?"":(r[ix.loc]||"").trim(),
+      phone:ix.phone<0?"":(r[ix.phone]||"").replace(/[^\d+]/g,"")
+    };
+  }).filter(r=>(r.date||r.days.length>0)&&r.name);
+}
+
+function matchDate(r, dateObj){
+  const k = keyOf(dateObj);
+  if(r.date && r.date === k) return true;
+  if(r.days && r.days.includes(dateObj.getDay())) return true;
+  return false;
 }
 
 function el(tag,cls,text){
   const e=document.createElement(tag);
   if(cls)e.className=cls;
-  if(text!==undefined)e.textContent=text;   // 주민 입력은 항상 텍스트로만 표시
+  if(text!==undefined)e.textContent=text;
   return e;
 }
 
@@ -157,107 +176,52 @@ const ICON='<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-wi
 function photoUrl(v){
   if(!v)return "";
   const g=v.match(/drive\.google\.com.*?(?:[?&]id=|\/d\/)([\w-]{10,})/);
-  if(g)return "https://drive.google.com/thumbnail?id="+g[1]+"&sz=w400";
-  if(/^https?:\/\//i.test(v))return v;
-  if(/^[^\/\\:]+\.(jpe?g|png|webp|gif)$/i.test(v))return "photos/"+encodeURIComponent(v);
-  return "";
+  if(g)return "https://google.com"+g[1]+"&sz=w400";
+  return v;
 }
 
-function photo(t){
-  const box=el("div","photo");
-  const url=photoUrl(t.photo);
-  const fallback=()=>{box.innerHTML=ICON};
-  if(!url){fallback();return box}
-  const img=document.createElement("img");
-  img.alt=t.name+" 사진";img.loading="lazy";
-  img.onerror=fallback;
-  img.src=url;
-  box.appendChild(img);
-  return box;
+function renderWeek(selDate){
+  const w=$("week");
+  w.innerHTML="";
+  const today=new Date();
+  const base=new Date(selDate);
+  const diffToMon=(base.getDay()+6)%7;
+  base.setDate(base.getDate()-diffToMon);
+
+  for(let i=0;i<7;i++){
+    const d=new Date(base);
+    d.setDate(base.getDate()+i);
+    const k=keyOf(d);
+    const cnt=rows.filter(r=>matchDate(r,d)).length;
+    const btn=el("button","wd"+(cnt?" has":"")+(k===keyOf(today)?" now":"")+(k===keyOf(selDate)?" sel":""));
+    btn.type="button";
+    btn.append(
+      el("span","n",WDAYS[d.getDay()]),
+      el("span","d",String(d.getDate())),
+      el("span","c",cnt?cnt+"대":"-")
+    );
+    btn.onclick=()=>{
+      const t0=new Date();t0.setHours(0,0,0,0);
+      const d0=new Date(d);d0.setHours(0,0,0,0);
+      offset=Math.round((d0-t0)/86400000);
+      render();
+    };
+    w.append(btn);
+  }
 }
 
 function render(){
-  const d=new Date();d.setDate(d.getDate()+offset);
-  const key=keyOf(d);
-  const names=["일","월","화","수","목","금","토"];
-  $("label").textContent=(d.getMonth()+1)+"월 "+d.getDate()+"일 ("+names[d.getDay()]+")"+(offset===0?" · 오늘":"");
-  const wk=$("week");wk.replaceChildren();
-  const base=new Date();base.setHours(0,0,0,0);
-  const sun=new Date(d);sun.setHours(0,0,0,0);sun.setDate(sun.getDate()-sun.getDay());
-  for(let i=0;i<7;i++){
-    const w=new Date(sun);w.setDate(sun.getDate()+i);
-    const k=keyOf(w);
-    const cnt=new Set(rows.filter(r=>r.date===k).map(r=>r.name)).size;
-    const diff=Math.round((w-base)/86400000);
-    const b=el("button","wd"+(cnt?" has":"")+(diff===0?" now":"")+(k===key?" sel":""));
-    b.type="button";
-    b.setAttribute("aria-label",(w.getMonth()+1)+"월 "+w.getDate()+"일 "+names[w.getDay()]+"요일, 트럭 "+cnt+"대");
-    if(k===key)b.setAttribute("aria-current","date");
-    b.appendChild(el("span","n",names[w.getDay()]));
-    b.appendChild(el("span","d",String(w.getDate())));
-    b.appendChild(el("span","c",cnt?cnt+"대":"–"));
-    b.onclick=()=>{offset=diff;render()};
-    wk.appendChild(b);
-  }
-  const lot=$("lot");lot.replaceChildren();
-  const day=rows.filter(r=>r.date===key);
-  day.slice().sort((a,b)=>(a.time||"").localeCompare(b.time||"")).forEach(t=>{
-      const card=el("div","card");
-      card.appendChild(photo(t));
-      const box=el("div","truck");
-      const n=el("div","name",t.name);
-      if(t.time)n.appendChild(el("span","time",t.time));
-      if(t.loc)n.appendChild(el("span","loc",t.loc));
-      box.appendChild(n);
-      const hasMenu=!!t.menu, hasPhone=(t.phone||"").length>=8;
-      if(hasMenu||hasPhone){
-        const row=el("div","actions");
-        let list=null;
-        if(hasMenu){
-          const b=el("button","btn menu","메뉴 보기");
-          b.type="button";b.setAttribute("aria-expanded","false");
-          list=el("div","list");list.hidden=true;
-          t.menu.split("\n").map(x=>x.trim()).filter(Boolean).forEach(x=>list.appendChild(el("div","item",x)));
-          b.onclick=()=>{const open=list.hidden;list.hidden=!open;b.setAttribute("aria-expanded",open)};
-          row.appendChild(b);
-        }
-        if(hasPhone){
-          const a=el("a","btn call");
-          a.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
-          a.appendChild(document.createTextNode("예약하기"));
-          a.setAttribute("aria-label","예약하기, 전화 연결");
-          a.href="tel:"+t.phone;
-          row.appendChild(a);
-        }
-        box.appendChild(row);
-        if(list)box.appendChild(list);
-      }
-      card.appendChild(box);
-      lot.appendChild(card);
-  });
-  if(!failed){
-    $("msg").hidden=day.length>0;
-    $("msg").textContent="아직 등록된 트럭이 없어요. 알고 계시면 알려주세요.";
-  }
-}
+  const d=new Date();
+  d.setDate(d.getDate()+offset);
+  renderWeek(d);
 
-async function load(){
-  if(!SHEET_CSV_URL){rows=DEMO;render();return}
-  try{
-    const res=await fetch(SHEET_CSV_URL+(SHEET_CSV_URL.includes("?")?"&":"?")+"t="+Date.now());
-    if(!res.ok)throw new Error(res.status);
-    rows=toRows(parseCSV(await res.text()));
-  }catch(e){
-    rows=[];failed=true;$("msg").hidden=false;$("msg").textContent="소식을 불러오지 못했어요. 잠시 후 다시 열어주세요.";
-  }
-  render();
-}
+  const labelStr=`${d.getMonth()+1}월 ${d.getDate()}일 (${WDAYS[d.getDay()]})`;
+  $("label").textContent=offset===0?`오늘 · ${labelStr}`:labelStr;
 
-$("prev").onclick=()=>{offset--;render()};
-$("next").onclick=()=>{offset++;render()};
-$("today").onclick=()=>{offset=0;render()};
-if(FORM_URL){$("add").href=FORM_URL;$("add").hidden=false}
-load();
-</script>
-</body>
-</html>
+  const lot=$("lot");
+  const msg=$("msg");
+  lot.innerHTML="";
+
+  if(failed){
+    msg.hidden=false;
+    msg.textContent="일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
