@@ -86,13 +86,14 @@ h1 svg{width:38px;height:38px;flex:none;color:var(--lit)}
 
 <script>
 /* ===== 여기만 고치세요 ===== */
-const SHEET_CSV_URL = "";   // 구글 시트 "웹에 게시" CSV 주소
-const FORM_URL      = "";   // 구글 폼 주소 (비우면 버튼이 숨겨져요)
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKNt-Nacw9SwbqurM7ktSvNIXinJxvpZGYKef73KTRc8N4vRDcFYFzqOSJscOtmmCTL64wuOlNHoyz/pub?output=csv
+";   // 구글 시트 "웹에 게시" CSV 주소
+const FORM_URL      = "https://forms.gle/Qyk4Cv5MzTWH73id7";   // 구글 폼 주소 (비우면 버튼이 숨겨져요)
 /* ========================== */
 
 const DEMO = [
   {date:todayKey(0),days:[],name:"청춘 닭꼬치",menu:"닭꼬치 3,000원\n소떡소떡 2,500원",time:"17:00–21:00",loc:"111동 앞",phone:"01000000000"},
-  {date:"",days:[0,1,2,3,4,5,6],loc:"107동 옆",name:"달콤 붕어빵 (매주 방문 예시)",menu:"팥 붕어빵 3개 2,000원\n슈크림 붕어빵 3개 2,000원",time:"16:30–20:00"},
+  {date:"",days:[1,3,5],loc:"107동 옆",name:"달콤 붕어빵 (매주 방문 예시)",menu:"팥 붕어빵 3개 2,000원\n슈크림 붕어빵 3개 2,000원",time:"16:30–20:00"},
   {date:todayKey(1),days:[],name:"타코 트럭",menu:"타코 2개 6,000원\n부리토 7,000원",time:"17:00–21:00"}
 ];
 
@@ -139,18 +140,19 @@ function parseDays(s){
 }
 
 function toRows(table){
+  if(!table||!table.length)return [];
   const head=table[0].map(h=>h.trim());
   const col=k=>head.findIndex(h=>h.includes(k));
   const ix={date:col("날짜"),photo:col("사진"),name:col("트럭"),menu:col("메뉴"),time:col("시간"),loc:col("위치"),phone:col("전화")};
   return table.slice(1).map(r=>{
-    const rawDate = (r[ix.date]||"").trim();
+    const rawDate = ix.date<0?"":(r[ix.date]||"").trim();
     return {
       date:normDate(rawDate),
       days:parseDays(rawDate),
       photo:ix.photo<0?"":(r[ix.photo]||"").trim(),
-      name:(r[ix.name]||"").trim(),
-      menu:(r[ix.menu]||"").trim(),
-      time:(r[ix.time]||"").trim(),
+      name:ix.name<0?"":(r[ix.name]||"").trim(),
+      menu:ix.menu<0?"":(r[ix.menu]||"").trim(),
+      time:ix.time<0?"":(r[ix.time]||"").trim(),
       loc:ix.loc<0?"":(r[ix.loc]||"").trim(),
       phone:ix.phone<0?"":(r[ix.phone]||"").replace(/[^\d+]/g,"")
     };
@@ -222,6 +224,3 @@ function render(){
   const msg=$("msg");
   lot.innerHTML="";
 
-  if(failed){
-    msg.hidden=false;
-    msg.textContent="일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
