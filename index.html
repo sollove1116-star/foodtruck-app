@@ -88,34 +88,35 @@ h1 svg{width:38px;height:38px;flex:none;color:var(--lit)}
 /* ===== 여기만 고치세요 ===== */
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKNt-Nacw9SwbqurM7ktSvNIXinJxvpZGYKef73KTRc8N4vRDcFYFzqOSJscOtmmCTL64wuOlNHoyz/pub?output=csv
 ";   // 구글 시트 "웹에 게시" CSV 주소
-const FORM_URL      = "https://forms.gle/Qyk4Cv5MzTWH73id7";   // 구글 폼 주소 (비우면 버튼이 숨겨져요)
+const FORM_URL      = "https://forms.gle/Qyk4Cv5MzTWH73id7
+";   // 구글 폼 주소 (비우면 버튼이 숨겨져요)
 /* ========================== */
 
 const DEMO = [
-  {date:todayKey(0),days:new Array(),name:"청춘 닭꼬치",menu:"닭꼬치 3,000원\n소떡소떡 2,500원",time:"17:00–21:00",loc:"111동 앞",phone:"01000000000"},
-  {date:"",days:new Array(1, 3),loc:"107동 옆",name:"달콤 붕어빵 (매주 월·수 예시)",menu:"팥 붕어빵 3개 2,000원\n슈크림 붕어빵 3개 2,000원",time:"16:30–20:00"},
-  {date:todayKey(1),days:new Array(),name:"타코 트럭",menu:"타코 2개 6,000원\n부리토 7,000원",time:"17:00–21:00"}
+  {date:todayKey(0),days:"",name:"청춘 닭꼬치",menu:"닭꼬치 3,000원\n소떡소떡 2,500원",time:"17:00–21:00",loc:"111동 앞",phone:"01000000000"},
+  {date:"",days:"월,수",loc:"107동 옆",name:"달콤 붕어빵 (매주 방문)",menu:"팥 붕어빵 3개 2,000원\n슈크림 붕어빵 3개 2,000원",time:"16:30–20:00"},
+  {date:todayKey(1),days:"",name:"타코 트럭",menu:"타코 2개 6,000원\n부리토 7,000원",time:"17:00–21:00"}
 ];
 
-let rows = new Array(), offset = 0, failed = false;
+let rows = [], offset = 0, failed = false;
 const $ = id => document.getElementById(id);
-const WDAYS = new Array("일","월","화","수","목","금","토");
+const WDAYS = "일월화수목금토";
 
 function pad(n){return String(n).padStart(2,"0")}
 function keyOf(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
 function todayKey(off){const d=new Date();d.setDate(d.getDate()+off);return keyOf(d)}
 
 function parseCSV(text){
-  const out=new Array();let row=new Array(),cell="",q=false;
+  const out=[];let row=[],cell="",q=false;
   for(let i=0;i<text.length;i++){
-    const c=text.charAt(i);
+    const c=text[i];
     if(q){
-      if(c==='"'&&text.charAt(i+1)==='"'){cell+='"';i++}
+      if(c==='"'&&text[i+1]==='"'){cell+='"';i++}
       else if(c==='"')q=false;
       else cell+=c;
     }else if(c==='"')q=true;
     else if(c===","){row.push(cell);cell=""}
-    else if(c==="\n"){row.push(cell);out.push(row);row=new Array();cell=""}
+    else if(c==="\n"){row.push(cell);out.push(row);row=[];cell=""}
     else if(c!=="\r")cell+=c;
   }
   if(cell||row.length){row.push(cell);out.push(row)}
@@ -125,44 +126,35 @@ function parseCSV(text){
 function normDate(s){
   s=(s||"").trim();
   let m=s.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
-  if(m)return m.at(1)+"-"+pad(+m.at(2))+"-"+pad(+m.at(3));
+  if(m)return m[1]+"-"+pad(+m[2])+"-"+pad(+m[3]);
   m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if(m)return m.at(3)+"-"+pad(+m.at(1))+"-"+pad(+m.at(2));
+  if(m)return m[3]+"-"+pad(+m[1])+"-"+pad(+m[2]);
   return "";
 }
 
-function parseDays(s){
-  s=(s||"").trim();
-  if(/\d{4}/.test(s)||/\d{1,2}\/\d{1,2}/.test(s)) return new Array();
-  const found=new Array();
-  WDAYS.forEach((w,idx)=>{ if(s.includes(w)) found.push(idx); });
-  return found;
-}
-
 function toRows(table){
-  if(!table||!table.length)return new Array();
-  const head=table.at(0).map(h=>h.trim());
+  const head=table[0].map(h=>h.trim());
   const col=k=>head.findIndex(h=>h.includes(k));
   const ix={date:col("날짜"),photo:col("사진"),name:col("트럭"),menu:col("메뉴"),time:col("시간"),loc:col("위치"),phone:col("전화")};
   return table.slice(1).map(r=>{
-    const rawDate = ix.date<0?"":(r.at(ix.date)||"").trim();
+    const rawDate = (r[ix.date]||"").trim();
+    const dStr = normDate(rawDate);
     return {
-      date:normDate(rawDate),
-      days:parseDays(rawDate),
-      photo:ix.photo<0?"":(r.at(ix.photo)||"").trim(),
-      name:ix.name<0?"":(r.at(ix.name)||"").trim(),
-      menu:ix.menu<0?"":(r.at(ix.menu)||"").trim(),
-      time:ix.time<0?"":(r.at(ix.time)||"").trim(),
-      loc:ix.loc<0?"":(r.at(ix.loc)||"").trim(),
-      phone:ix.phone<0?"":(r.at(ix.phone)||"").replace(/[^\d+]/g,"")
+      date:dStr,
+      days:dStr ? "" : rawDate,
+      photo:ix.photo<0?"":(r[ix.photo]||"").trim(),
+      name:(r[ix.name]||"").trim(),
+      menu:(r[ix.menu]||"").trim(),
+      time:(r[ix.time]||"").trim(),
+      loc:ix.loc<0?"":(r[ix.loc]||"").trim(),
+      phone:ix.phone<0?"":(r[ix.phone]||"").replace(/[^\d+]/g,"")
     };
-  }).filter(r=>(r.date||r.days.length>0)&&r.name);
+  }).filter(r=>(r.date||r.days)&&r.name);
 }
 
-function matchDate(r, dateObj){
-  const k = keyOf(dateObj);
-  if(r.date && r.date === k) return true;
-  if(r.days && r.days.includes(dateObj.getDay())) return true;
+function isMatch(r, d){
+  if(r.date && r.date === keyOf(d)) return true;
+  if(r.days && r.days.includes(WDAYS[d.getDay()])) return true;
   return false;
 }
 
@@ -178,7 +170,7 @@ const ICON='<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-wi
 function photoUrl(v){
   if(!v)return "";
   const g=v.match(/drive\.google\.com.*?(?:[?&]id=|\/d\/)([\w-]{10,})/);
-  if(g)return "https://google.com"+g.at(1)+"&sz=w400";
+  if(g)return "https://google.com"+g[1]+"&sz=w400";
   return v;
 }
 
@@ -194,11 +186,11 @@ function renderWeek(selDate){
     const d=new Date(base);
     d.setDate(base.getDate()+i);
     const k=keyOf(d);
-    const cnt=rows.filter(r=>matchDate(r,d)).length;
+    const cnt=rows.filter(r=>isMatch(r,d)).length;
     const btn=el("button","wd"+(cnt?" has":"")+(k===keyOf(today)?" now":"")+(k===keyOf(selDate)?" sel":""));
     btn.type="button";
     btn.append(
-      el("span","n",WDAYS.at(d.getDay())),
+      el("span","n",WDAYS[d.getDay()]),
       el("span","d",String(d.getDate())),
       el("span","c",cnt?cnt+"대":"-")
     );
@@ -217,3 +209,26 @@ function render(){
   d.setDate(d.getDate()+offset);
   renderWeek(d);
 
+  const labelStr=(d.getMonth()+1)+"월 "+d.getDate()+"일 ("+WDAYS[d.getDay()]+")";
+  $("label").textContent=offset===0?"오늘 · "+labelStr:labelStr;
+
+  const lot=$("lot");
+  const msg=$("msg");
+  lot.innerHTML="";
+
+  if(failed){
+    msg.hidden=false;
+    msg.textContent="일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
+    return;
+  }
+
+  const list=rows.filter(r=>isMatch(r,d));
+  if(!list.length){
+    msg.hidden=false;
+    msg.textContent="이 날은 등록된 푸드트럭 소식이 없어요.";
+    return;
+  }
+  msg.hidden=true;
+
+  list.forEach(r=>{
+    const card=el("article","card");
